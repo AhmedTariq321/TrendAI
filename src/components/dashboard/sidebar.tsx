@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Lightbulb, Sparkles, Zap, Hash,
-  BookOpen, BookmarkCheck, Clock, Settings, Crown, ChevronRight,
+  BookOpen, BookmarkCheck, Clock, Settings, Crown, ChevronRight, ImageIcon,
 } from "lucide-react";
 import { UpgradeModal, type PlanType } from "./upgrade-modal";
 
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/hooks", icon: Zap, label: "Hooks", color: "text-blue-400" },
   { href: "/dashboard/hashtags", icon: Hash, label: "Hashtags", color: "text-green-400" },
   { href: "/dashboard/planner", icon: BookOpen, label: "Growth Planner", color: "text-orange-400" },
+  { href: "/dashboard/image-generation", icon: ImageIcon, label: "Image Gen", color: "text-pink-400" },
 ];
 
 const BOTTOM_ITEMS = [

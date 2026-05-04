@@ -1,15 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { PlanBanner } from "@/components/dashboard/plan-banner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
   Sparkles, Lightbulb, Zap, Hash, BookOpen,
-  TrendingUp, Clock, ArrowRight, Star, Flame,
+  TrendingUp, Clock, ArrowRight, Star, Flame, ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
+import type { PlanType } from "@/components/dashboard/upgrade-modal";
 
 const QUICK_ACTIONS = [
   { href: "/dashboard/viral-ideas", icon: Lightbulb, label: "Viral Ideas", color: "text-yellow-400", bg: "bg-yellow-500/10", border: "hover:border-yellow-500/30" },
@@ -17,6 +19,7 @@ const QUICK_ACTIONS = [
   { href: "/dashboard/hooks", icon: Zap, label: "Hooks", color: "text-blue-400", bg: "bg-blue-500/10", border: "hover:border-blue-500/30" },
   { href: "/dashboard/hashtags", icon: Hash, label: "Hashtags", color: "text-green-400", bg: "bg-green-500/10", border: "hover:border-green-500/30" },
   { href: "/dashboard/planner", icon: BookOpen, label: "Planner", color: "text-orange-400", bg: "bg-orange-500/10", border: "hover:border-orange-500/30" },
+  { href: "/dashboard/image-generation", icon: ImageIcon, label: "Image Gen", color: "text-pink-400", bg: "bg-pink-500/10", border: "hover:border-pink-500/30" },
 ];
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -57,6 +60,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Plan banner */}
+      <PlanBanner plan={(user.plan as PlanType) ?? "FREE"} />
+
       {/* Welcome banner */}
       <div className="relative rounded-2xl border border-border/50 overflow-hidden p-6 bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.15),transparent_70%)] pointer-events-none" />
