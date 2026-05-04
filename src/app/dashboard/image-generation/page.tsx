@@ -12,19 +12,19 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const STYLES = [
-  { id: "realistic", label: "Realistic", prompt: "photorealistic, high detail, 8k" },
-  { id: "anime", label: "Anime", prompt: "anime style, studio ghibli, vibrant colors" },
-  { id: "artistic", label: "Artistic", prompt: "digital art, concept art, artstation" },
-  { id: "cinematic", label: "Cinematic", prompt: "cinematic, movie still, dramatic lighting" },
-  { id: "watercolor", label: "Watercolor", prompt: "watercolor painting, soft colors, artistic" },
-  { id: "3d", label: "3D Render", prompt: "3d render, blender, octane render, detailed" },
+  { id: "realistic", label: "Realistic", prompt: "photorealistic, ultra detailed, 8k photography" },
+  { id: "anime", label: "Anime", prompt: "anime style, vibrant colors, studio ghibli inspired" },
+  { id: "artistic", label: "Artistic", prompt: "digital art, concept art, detailed illustration" },
+  { id: "cinematic", label: "Cinematic", prompt: "cinematic shot, movie still, dramatic lighting, film grain" },
+  { id: "watercolor", label: "Watercolor", prompt: "watercolor painting, soft brushstrokes, artistic" },
+  { id: "3d", label: "3D Render", prompt: "3d render, octane render, subsurface scattering, detailed" },
 ];
 
 const RATIOS = [
-  { id: "square", label: "1:1", w: 1024, h: 1024 },
-  { id: "landscape", label: "16:9", w: 1280, h: 720 },
-  { id: "portrait", label: "9:16", w: 720, h: 1280 },
-  { id: "wide", label: "4:3", w: 1024, h: 768 },
+  { id: "square",    label: "1:1",   w: 1024, h: 1024 },
+  { id: "landscape", label: "16:9",  w: 1280, h: 720  },
+  { id: "portrait",  label: "9:16",  w: 720,  h: 1280 },
+  { id: "wide",      label: "4:3",   w: 1024, h: 768  },
 ];
 
 const SUGGESTIONS = [
@@ -32,15 +32,19 @@ const SUGGESTIONS = [
   "A cozy coffee shop in the rain at night",
   "An astronaut floating in a colorful nebula",
   "A magical forest with glowing mushrooms",
-  "A minimalist workspace with plants and good lighting",
+  "A minimalist workspace with plants",
   "A dragon soaring over snowy mountains",
 ];
 
+type ImageStatus = "loading" | "done" | "error";
+
 interface GeneratedImage {
   id: string;
-  url: string;
+  dataUrl: string | null;
   prompt: string;
-  style: string;
+  styleId: string;
+  ratioId: string;
+  status: ImageStatus;
 }
 
 export default function ImageGenerationPage() {
@@ -51,55 +55,91 @@ export default function ImageGenerationPage() {
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [lightbox, setLightbox] = useState<GeneratedImage | null>(null);
 
-  const buildUrl = useCallback((userPrompt: string, styleId: string, ratioId: string) => {
-    const style = STYLES.find((s) => s.id === styleId)!;
-    const ratio = RATIOS.find((r) => r.id === ratioId)!;
-    const fullPrompt = `${userPrompt}, ${style.prompt}`;
-    const encoded = encodeURIComponent(fullPrompt);
-    const seed = Math.floor(Math.random() * 999999);
-    return `https://image.pollinations.ai/prompt/${encoded}?width=${ratio.w}&height=${ratio.h}&nologo=true&seed=${seed}&model=flux`;
+  const fetchOne = useCallback(async (
+    id: string, fullPrompt: string, styleId: string, ratioId: string,
+    ratio: { w: number; h: number }
+  ) => {
+    try {
+      const res = await fetch("/api/image-generation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: fullPrompt, width: ratio.w, height: ratio.h }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.dataUrl) throw new Error(data.error ?? "Failed");
+      setImages((prev) =>
+        prev.map((img) => img.id === id ? { ...img, dataUrl: data.dataUrl, status: "done" } : img)
+      );
+    } catch {
+      setImages((prev) =>
+        prev.map((img) => img.id === id ? { ...img, status: "error" } : img)
+      );
+    }
   }, []);
 
-  const generate = async () => {
-    if (!prompt.trim()) {
-      toast.error("Enter a prompt first");
-      return;
-    }
+  const generate = async (overridePrompt?: string, overrideStyle?: string, overrideRatio?: string) => {
+    const p = (overridePrompt ?? prompt).trim();
+    const styleId = overrideStyle ?? selectedStyle;
+    const ratioId = overrideRatio ?? selectedRatio;
+
+    if (!p) { toast.error("Enter a prompt first"); return; }
+
+    const style = STYLES.find((s) => s.id === styleId)!;
+    const ratio = RATIOS.find((r) => r.id === ratioId)!;
+    const fullPrompt = `${p}, ${style.prompt}`;
+
     setGenerating(true);
-    try {
-      // Generate 2 variations
-      const newImages: GeneratedImage[] = [1, 2].map((_, i) => ({
-        id: `${Date.now()}-${i}`,
-        url: buildUrl(prompt, selectedStyle, selectedRatio),
-        prompt,
-        style: selectedStyle,
-      }));
-      setImages((prev) => [...newImages, ...prev]);
-      toast.success("Images generated!", { description: "Loading may take a few seconds." });
-    } finally {
-      setGenerating(false);
-    }
+
+    // Add 2 placeholder cards immediately
+    const placeholders: GeneratedImage[] = [0, 1].map((i) => ({
+      id: `${Date.now()}-${i}`,
+      dataUrl: null,
+      prompt: p,
+      styleId,
+      ratioId,
+      status: "loading",
+    }));
+
+    setImages((prev) => [...placeholders, ...prev]);
+
+    // Fetch both in parallel, each updates its own card as it resolves
+    await Promise.all(
+      placeholders.map((ph) => fetchOne(ph.id, fullPrompt, styleId, ratioId, ratio))
+    );
+
+    setGenerating(false);
+    toast.success("Images ready!");
   };
 
-  const downloadImage = async (img: GeneratedImage) => {
-    try {
-      const res = await fetch(img.url);
-      const blob = await res.blob();
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `trendpilot-${img.id}.jpg`;
-      link.click();
-      toast.success("Image downloaded!");
-    } catch {
-      toast.error("Download failed — try right-clicking the image instead.");
-    }
+  const regenOne = async (img: GeneratedImage) => {
+    const style = STYLES.find((s) => s.id === img.styleId)!;
+    const ratio = RATIOS.find((r) => r.id === img.ratioId)!;
+    const fullPrompt = `${img.prompt}, ${style.prompt}`;
+    const newId = `${Date.now()}-regen`;
+
+    const placeholder: GeneratedImage = {
+      id: newId, dataUrl: null, prompt: img.prompt,
+      styleId: img.styleId, ratioId: img.ratioId, status: "loading",
+    };
+    setImages((prev) => [placeholder, ...prev]);
+    await fetchOne(newId, fullPrompt, img.styleId, img.ratioId, ratio);
   };
 
-  const ratio = RATIOS.find((r) => r.id === selectedRatio)!;
-  const aspectClass =
-    selectedRatio === "portrait" ? "aspect-[9/16]" :
-    selectedRatio === "landscape" ? "aspect-[16/9]" :
-    selectedRatio === "wide" ? "aspect-[4/3]" : "aspect-square";
+  const downloadImage = (img: GeneratedImage) => {
+    if (!img.dataUrl) return;
+    const link = document.createElement("a");
+    link.href = img.dataUrl;
+    link.download = `trendpilot-${img.id}.jpg`;
+    link.click();
+    toast.success("Image downloaded!");
+  };
+
+  const aspectClass = (ratioId: string) => ({
+    portrait:  "aspect-[9/16]",
+    landscape: "aspect-[16/9]",
+    wide:      "aspect-[4/3]",
+    square:    "aspect-square",
+  }[ratioId] ?? "aspect-square");
 
   return (
     <div className="space-y-6">
@@ -117,11 +157,10 @@ export default function ImageGenerationPage() {
         </Badge>
       </div>
 
-      {/* Main panel */}
       <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-
-        {/* Left: controls */}
+        {/* ── Left: controls ── */}
         <div className="space-y-5">
+
           {/* Prompt */}
           <Card className="p-5 border-border/50 bg-card/40">
             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -131,16 +170,15 @@ export default function ImageGenerationPage() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) generate(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }}
                 placeholder="A breathtaking sunset over a futuristic city skyline..."
                 rows={3}
                 className="w-full resize-none rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-pink-500/30 focus:border-pink-500/40 transition-all"
               />
-              <div className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/50">
-                ⌘↵ to generate
+              <div className="absolute bottom-2 right-2 text-[10px] text-muted-foreground/40">
+                Ctrl+↵ generate
               </div>
             </div>
-
             {/* Suggestions */}
             <div className="mt-3">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Try these</p>
@@ -204,27 +242,21 @@ export default function ImageGenerationPage() {
             </div>
           </Card>
 
-          {/* Generate button */}
+          {/* Generate */}
           <Button
-            onClick={generate}
+            onClick={() => generate()}
             disabled={generating || !prompt.trim()}
             className="w-full h-12 text-sm font-bold gap-2 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white border-0 shadow-lg shadow-pink-500/25 disabled:opacity-50"
           >
             {generating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating...
-              </>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
             ) : (
-              <>
-                <Wand2 className="h-4 w-4" />
-                Generate Images
-              </>
+              <><Wand2 className="h-4 w-4" /> Generate Images</>
             )}
           </Button>
         </div>
 
-        {/* Right: preview / output */}
+        {/* ── Right: output ── */}
         <div className="space-y-4">
           {images.length === 0 ? (
             <Card className="border-dashed border-border/40 bg-card/20 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
@@ -234,17 +266,17 @@ export default function ImageGenerationPage() {
               <div>
                 <p className="font-semibold mb-1">Your images will appear here</p>
                 <p className="text-sm text-muted-foreground">Enter a prompt and hit Generate</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Takes ~15–30 seconds per image</p>
               </div>
             </Card>
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  {images.length} image{images.length !== 1 ? "s" : ""} generated
+                  {images.length} image{images.length !== 1 ? "s" : ""}
                 </p>
                 <Button
-                  variant="ghost"
-                  size="sm"
+                  variant="ghost" size="sm"
                   className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
                   onClick={() => setImages([])}
                 >
@@ -254,51 +286,67 @@ export default function ImageGenerationPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 {images.map((img) => (
-                  <div key={img.id} className="group relative rounded-xl overflow-hidden border border-border/40 bg-muted/20">
-                    <div className={cn("w-full", aspectClass)}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={img.url}
-                        alt={img.prompt}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23111'/%3E%3Ctext x='50%25' y='50%25' fill='%23555' text-anchor='middle' dy='.3em' font-family='sans-serif' font-size='14'%3EFailed to load%3C/text%3E%3C/svg%3E";
-                        }}
-                      />
+                  <div
+                    key={img.id}
+                    className={cn(
+                      "group relative rounded-xl overflow-hidden border bg-muted/20",
+                      img.status === "done" ? "border-border/40" : "border-border/20"
+                    )}
+                  >
+                    <div className={cn("w-full", aspectClass(img.ratioId))}>
+                      {img.status === "loading" && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted/30">
+                          <Loader2 className="h-6 w-6 animate-spin text-pink-400" />
+                          <p className="text-[10px] text-muted-foreground">Generating...</p>
+                        </div>
+                      )}
+                      {img.status === "error" && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                          <p className="text-[11px] text-muted-foreground">Generation failed</p>
+                          <button
+                            onClick={() => regenOne(img)}
+                            className="text-[11px] text-pink-400 hover:underline"
+                          >
+                            Try again
+                          </button>
+                        </div>
+                      )}
+                      {img.status === "done" && img.dataUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={img.dataUrl}
+                          alt={img.prompt}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
-                    {/* overlay actions */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => setLightbox(img)}
-                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
-                        title="View full size"
-                      >
-                        <ZoomIn className="h-4 w-4 text-white" />
-                      </button>
-                      <button
-                        onClick={() => downloadImage(img)}
-                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
-                        title="Download"
-                      >
-                        <Download className="h-4 w-4 text-white" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          const regen: GeneratedImage = {
-                            id: `${Date.now()}-regen`,
-                            url: buildUrl(img.prompt, img.style, selectedRatio),
-                            prompt: img.prompt,
-                            style: img.style,
-                          };
-                          setImages((prev) => [regen, ...prev]);
-                        }}
-                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
-                        title="Regenerate variation"
-                      >
-                        <RefreshCw className="h-4 w-4 text-white" />
-                      </button>
-                    </div>
+
+                    {/* Hover overlay */}
+                    {img.status === "done" && (
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setLightbox(img)}
+                          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                          title="View full size"
+                        >
+                          <ZoomIn className="h-4 w-4 text-white" />
+                        </button>
+                        <button
+                          onClick={() => downloadImage(img)}
+                          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4 text-white" />
+                        </button>
+                        <button
+                          onClick={() => regenOne(img)}
+                          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                          title="New variation"
+                        >
+                          <RefreshCw className="h-4 w-4 text-white" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -308,7 +356,7 @@ export default function ImageGenerationPage() {
       </div>
 
       {/* Lightbox */}
-      {lightbox && (
+      {lightbox?.dataUrl && (
         <div
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
@@ -321,11 +369,7 @@ export default function ImageGenerationPage() {
               <X className="h-4 w-4 text-white" />
             </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={lightbox.url}
-              alt={lightbox.prompt}
-              className="w-full rounded-2xl shadow-2xl"
-            />
+            <img src={lightbox.dataUrl} alt={lightbox.prompt} className="w-full rounded-2xl shadow-2xl" />
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm text-white/70 truncate flex-1 mr-4">{lightbox.prompt}</p>
               <Button
