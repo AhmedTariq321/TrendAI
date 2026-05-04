@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "./prisma";
 import { NextResponse } from "next/server";
-import type { User } from "@prisma/client/index.js";
+import type { User } from "@prisma/client";
 
 export async function requireAuth(): Promise<
   { user: User; error: null } | { user: null; error: NextResponse }

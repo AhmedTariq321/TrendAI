@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
-import { Plan } from "@prisma/client/index.js";
+import type { Plan } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth();

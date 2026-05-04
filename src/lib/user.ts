@@ -1,6 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "./prisma";
-import type { User } from "@prisma/client/index.js";
+import type { User } from "@prisma/client";
 
 /**
  * Gets the current user from the DB, creating them if they don't exist yet.
