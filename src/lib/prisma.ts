@@ -3,12 +3,14 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL!;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL environment variable is not set");
   const pool = new Pool({
     connectionString,
     ssl: connectionString.includes("supabase.com")
       ? { rejectUnauthorized: false }
       : false,
+    max: 1, // limit connections in serverless environment
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
