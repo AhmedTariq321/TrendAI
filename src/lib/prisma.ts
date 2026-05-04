@@ -5,13 +5,16 @@ import { Pool } from "pg";
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL environment variable is not set");
+
+  const isSupabase = connectionString.includes("supabase.com");
   const pool = new Pool({
     connectionString,
-    ssl: connectionString.includes("supabase.com")
-      ? { rejectUnauthorized: false }
-      : false,
-    max: 1, // limit connections in serverless environment
+    // sslmode=require in URL causes pg to verify the cert chain (self-signed fails).
+    // Handle SSL entirely here instead so rejectUnauthorized:false is respected.
+    ssl: isSupabase ? ({ rejectUnauthorized: false } as object) : false,
+    max: 1,
   });
+
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,
