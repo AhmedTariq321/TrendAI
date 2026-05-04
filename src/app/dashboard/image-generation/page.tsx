@@ -57,13 +57,13 @@ export default function ImageGenerationPage() {
 
   const fetchOne = useCallback(async (
     id: string, fullPrompt: string, styleId: string, ratioId: string,
-    ratio: { w: number; h: number }
+    ratio: { w: number; h: number }, delay = 0
   ) => {
     try {
       const res = await fetch("/api/image-generation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, width: ratio.w, height: ratio.h }),
+        body: JSON.stringify({ prompt: fullPrompt, width: ratio.w, height: ratio.h, delay }),
       });
       const data = await res.json();
       if (!res.ok || !data.dataUrl) throw new Error(data.error ?? "Failed");
@@ -102,9 +102,9 @@ export default function ImageGenerationPage() {
 
     setImages((prev) => [...placeholders, ...prev]);
 
-    // Fetch both in parallel, each updates its own card as it resolves
+    // Fetch both in parallel — stagger by 3s so Pollinations doesn't rate-limit
     await Promise.all(
-      placeholders.map((ph) => fetchOne(ph.id, fullPrompt, styleId, ratioId, ratio))
+      placeholders.map((ph, i) => fetchOne(ph.id, fullPrompt, styleId, ratioId, ratio, i * 3000))
     );
 
     setGenerating(false);
