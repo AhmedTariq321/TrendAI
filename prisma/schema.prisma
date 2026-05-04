@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique
+  email         String    @unique
+  name          String?
+  imageUrl      String?
+  role          Role      @default(USER)
+  plan          Plan      @default(FREE)
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastActiveAt  DateTime  @default(now())
+
+  generations   Generation[]
+  savedItems    SavedItem[]
+  usageLogs     UsageLog[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
+enum Plan {
+  FREE
+  PRO
+  ELITE
+}
+
+model Generation {
+  id          String          @id @default(cuid())
+  userId      String
+  feature     FeatureType
+  inputs      Json
+  outputs     Json
+  tokensUsed  Int             @default(0)
+  createdAt   DateTime        @default(now())
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedItems  SavedItem[]
+
+  @@index([userId])
+  @@index([feature])
+  @@index([createdAt])
+}
+
+enum FeatureType {
+  VIRAL_IDEAS
+  CAPTIONS
+  HOOKS
+  HASHTAGS
+  GROWTH_PLANNER
+}
+
+model SavedItem {
+  id           String    @id @default(cuid())
+  userId       String
+  generationId String
+  title        String
+  content      String    @db.Text
+  feature      FeatureType
+  createdAt    DateTime  @default(now())
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generation   Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([feature])
+}
+
+model UsageLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  feature     FeatureType
+  tokensUsed  Int         @default(0)
+  success     Boolean     @default(true)
+  errorMsg    String?
+  createdAt   DateTime    @default(now())
+
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([feature])
+  @@index([createdAt])
+}
+
+model AdminLog {
+  id          String    @id @default(cuid())
+  adminId     String
+  action      String
+  targetId    String?
+  targetType  String?
+  details     Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+}
+
+model AppSettings {
+  id                    String   @id @default(cuid())
+  key                   String   @unique
+  value                 String   @db.Text
+  updatedAt             DateTime @updatedAt
+
+  @@index([key])
+}
