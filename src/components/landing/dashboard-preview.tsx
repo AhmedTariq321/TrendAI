@@ -1,5 +1,3 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, TrendingUp, Hash, Lightbulb, BookOpen, Zap } from "lucide-react";
 

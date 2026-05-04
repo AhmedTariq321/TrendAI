@@ -358,24 +358,25 @@ export default function ImageGenerationPage() {
       {/* Lightbox */}
       {lightbox?.dataUrl && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 sm:p-6"
           onClick={() => setLightbox(null)}
         >
           <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            {/* Close button — inside top-right corner of image so it's always visible */}
             <button
               onClick={() => setLightbox(null)}
-              className="absolute -top-10 right-0 p-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute top-2 right-2 z-10 p-1.5 rounded-xl bg-black/50 hover:bg-black/70 transition-colors"
             >
               <X className="h-4 w-4 text-white" />
             </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={lightbox.dataUrl} alt={lightbox.prompt} className="w-full rounded-2xl shadow-2xl" />
-            <div className="mt-3 flex items-center justify-between">
-              <p className="text-sm text-white/70 truncate flex-1 mr-4">{lightbox.prompt}</p>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-sm text-white/70 truncate flex-1">{lightbox.prompt}</p>
               <Button
                 size="sm"
                 onClick={() => downloadImage(lightbox)}
-                className="h-8 gap-1.5 bg-white/10 hover:bg-white/20 text-white border-0 text-xs"
+                className="h-8 gap-1.5 bg-white/10 hover:bg-white/20 text-white border-0 text-xs shrink-0"
               >
                 <Download className="h-3.5 w-3.5" /> Download
               </Button>

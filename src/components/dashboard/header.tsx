@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/hooks": "Hook Generator",
   "/dashboard/hashtags": "Hashtag Generator",
   "/dashboard/planner": "Growth Planner",
+  "/dashboard/image-generation": "Image Generation",
   "/dashboard/saved": "Saved Results",
   "/dashboard/history": "History",
   "/dashboard/settings": "Settings",

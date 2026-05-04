@@ -94,16 +94,21 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Glassmorphism utility */
+/* Glassmorphism utility — backdrop-filter skipped on mobile for performance */
 .glass {
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .dark .glass {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 640px) {
+  .glass {
+    backdrop-filter: blur(10px);
+  }
 }
 
 /* Gradient text */
@@ -147,11 +152,14 @@ body {
               radial-gradient(ellipse 60% 50% at 20% 60%, rgba(168, 85, 247, 0.15), transparent);
 }
 
-/* Card hover effect */
+/* Card hover effect — only on pointer devices (not touch) */
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(139, 92, 246, 0.15);
+
+@media (hover: hover) and (pointer: fine) {
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.15);
+  }
 }

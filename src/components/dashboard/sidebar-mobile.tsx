@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Lightbulb, Sparkles, Zap, Hash,
-  BookOpen, BookmarkCheck, Clock, Settings, Zap as ZapIcon,
+  BookOpen, BookmarkCheck, Clock, Settings, Zap as ZapIcon, ImageIcon,
 } from "lucide-react";
 
 const ALL_ITEMS = [
@@ -15,6 +15,7 @@ const ALL_ITEMS = [
   { href: "/dashboard/hooks", icon: Zap, label: "Hook Generator" },
   { href: "/dashboard/hashtags", icon: Hash, label: "Hashtags" },
   { href: "/dashboard/planner", icon: BookOpen, label: "Growth Planner" },
+  { href: "/dashboard/image-generation", icon: ImageIcon, label: "Image Gen" },
   { href: "/dashboard/saved", icon: BookmarkCheck, label: "Saved Results" },
   { href: "/dashboard/history", icon: Clock, label: "History" },
   { href: "/dashboard/settings", icon: Settings, label: "Settings" },
